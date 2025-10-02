@@ -35,6 +35,7 @@ class Infinite(object):
     sma_window = 10         # Simple Moving Average window
     check_tty = True
     hide_cursor = True
+    disable = False
 
     def __init__(self, message='', **kwargs):
         self.index = 0
@@ -50,7 +51,7 @@ class Infinite(object):
         self._hidden_cursor = False
         self.message = message
 
-        if self.file and self.is_tty():
+        if self.file and self.is_tty() and not self.disable:
             if self.hide_cursor:
                 print(HIDE_CURSOR, end='', file=self.file)
                 self._hidden_cursor = True
@@ -91,7 +92,7 @@ class Infinite(object):
         pass
 
     def writeln(self, line):
-        if self.file and self.is_tty():
+        if self.file and self.is_tty() and not self.disable:
             width = len(line)
             if width < self._max_width:
                 # Add padding to cover previous contents
@@ -102,7 +103,7 @@ class Infinite(object):
             self.file.flush()
 
     def finish(self):
-        if self.file and self.is_tty():
+        if self.file and self.is_tty() and not self.disable:
             print(file=self.file)
             if self._hidden_cursor:
                 print(SHOW_CURSOR, end='', file=self.file)
@@ -116,12 +117,13 @@ class Infinite(object):
             raise AttributeError(msg)
 
     def next(self, n=1):
-        now = monotonic()
-        dt = now - self._ts
-        self.update_avg(n, dt)
-        self._ts = now
-        self.index = self.index + n
-        self.update()
+        if not self.disable:
+            now = monotonic()
+            dt = now - self._ts
+            self.update_avg(n, dt)
+            self._ts = now
+            self.index = self.index + n
+            self.update()
 
     def iter(self, it):
         self.iter_value = None
@@ -168,7 +170,8 @@ class Progress(Infinite):
         return max(self.max - self.index, 0)
 
     def start(self):
-        self.update()
+        if not self.disable:
+            self.update()
 
     def goto(self, index):
         incr = index - self.index
